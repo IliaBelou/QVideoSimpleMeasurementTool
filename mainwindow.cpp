@@ -114,36 +114,6 @@ void MainWindow::processFrame(const QVideoFrame &frame)
     }, Qt::QueuedConnection);
 }
 
-QImage MainWindow::Mat2QImage(const cv::Mat &mat)
-{
-    if (mat.empty()) return QImage();
-    if (mat.type() == CV_8UC3) {
-        QImage image(mat.cols, mat.rows, QImage::Format_RGB888);
-        memcpy(image.bits(), mat.data, mat.total() * mat.elemSize());
-        return image.rgbSwapped();
-    } else if (mat.type() == CV_8UC1) {
-        QImage image(mat.cols, mat.rows, QImage::Format_Grayscale8);
-        memcpy(image.bits(), mat.data, mat.total() * mat.elemSize());
-        return image;
-    }
-    return QImage();
-}
-
-cv::Mat MainWindow::QImage2Mat(const QImage &image)
-{
-    if (image.isNull()) return cv::Mat();
-    if (image.format() == QImage::Format_RGB888) {
-        cv::Mat mat(image.height(), image.width(), CV_8UC3);
-        memcpy(mat.data, image.bits(), image.sizeInBytes());
-        return mat;
-    } else if (image.format() == QImage::Format_Grayscale8) {
-        cv::Mat mat(image.height(), image.width(), CV_8UC1);
-        memcpy(mat.data, image.bits(), image.sizeInBytes());
-        return mat;
-    }
-    return cv::Mat();
-}
-
 void MainWindow::updateCannyState(int state)
 {
     enableCanny = (state == Qt::Checked);
@@ -427,6 +397,95 @@ void MainWindow::updateVideoSize()
     ui->vidWgt->fitInView(pixmapItem, Qt::KeepAspectRatio);
 }
 
+void MainWindow::startRtspCapture(const QString &url)
+{
+    stopRtspCapture(); // Clean up any existing RTSP capture
+
+    rtspCapture = new cv::VideoCapture(url.toStdString(), cv::CAP_FFMPEG);
+    if (!rtspCapture->isOpened()) {
+        qDebug() << "Failed to open RTSP stream:" << url;
+        delete rtspCapture;
+        rtspCapture = nullptr;
+        return;
+    }
+
+    rtspTimer = new QTimer(this);
+    connect(rtspTimer, &QTimer::timeout, this, &MainWindow::processRtspFrame,Qt::QueuedConnection);
+    rtspTimer->start(33);
+}
+
+void MainWindow::stopRtspCapture()
+{
+    if (rtspTimer) {
+        rtspTimer->stop();
+        delete rtspTimer;
+        rtspTimer = nullptr;
+    }
+    if (rtspCapture) {
+        rtspCapture->release();
+        delete rtspCapture;
+        rtspCapture = nullptr;
+    }
+}
+
+void MainWindow::processRtspFrame()
+{
+    if (!rtspCapture || !rtspCapture->isOpened()) {
+        qDebug() << "RTSP capture not opened";
+        stopRtspCapture();
+        return;
+    }
+
+    cv::Mat frame;
+    if (!rtspCapture->read(frame)) {
+        qDebug() << "Failed to read RTSP frame";
+        return;
+    }
+
+    if (frame.empty()) {
+        qDebug() << "Empty RTSP frame";
+        return;
+    }
+
+    // Convert to BGRA for consistency
+    cv::Mat processed;
+    if (frame.type() == CV_8UC3) {
+        cv::cvtColor(frame, processed, cv::COLOR_BGR2BGRA);
+    } else if (frame.type() == CV_8UC4) {
+        processed = frame.clone();
+    } else {
+        qDebug() << "Unsupported RTSP frame type:" << frame.type();
+        return;
+    }
+
+    if (enableCanny) {
+        cv::setNumThreads(0);
+        cv::Mat gray(processed.rows, processed.cols, CV_8U);
+        try {
+            cv::cvtColor(processed, gray, cv::COLOR_BGRA2GRAY);
+        } catch (const cv::Exception& e) {
+            qDebug() << "cv::cvtColor failed for RTSP:" << e.what();
+            return;
+        }
+        cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
+        cv::Mat edges;
+        cv::Canny(gray, edges, ui->dSb_edgeDetectionThr1->value(), ui->dSb_edgeDetectionThr2->value());
+        cv::cvtColor(edges, processed, cv::COLOR_GRAY2BGRA);
+    }
+
+    QImage outputImage((const uchar*)processed.data, processed.cols, processed.rows, processed.step, QImage::Format_RGB32);
+    outputImage = outputImage.copy();
+    if (outputImage.isNull()) {
+        qDebug() << "Null RTSP output QImage";
+        return;
+    }
+
+    QMetaObject::invokeMethod(this, [=]() {
+        pixmapItem->setPixmap(QPixmap::fromImage(outputImage));
+        scene->setSceneRect(0, 0, outputImage.width(), outputImage.height());
+    }, Qt::QueuedConnection);
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -440,80 +499,107 @@ MainWindow::MainWindow(QWidget *parent)
     initializeToolBar();
     setupGraphicsView();
 
+    // Initialize video sources
     QMediaDevices mediaDevices;
     const QList<QCameraDevice> cameras = mediaDevices.videoInputs();
     if (cameras.isEmpty()) {
-        statusBar()->showMessage(tr("No video input"));
+        statusBar()->showMessage(tr("No video input devices found"));
     } else {
         for (const QCameraDevice &camera : cameras) {
             ui->cb_videoSources->addItem(camera.description());
         }
     }
+    ui->cb_videoSources->addItem("RTSP");
 
-    const QCameraDevice &cameraDevice = cameras.first();
-    camera = new QCamera(cameraDevice, this);
-    QList<QCameraFormat> formats = cameraDevice.videoFormats();
-    for (const QCameraFormat &fmt : formats) {
-        ui->cb_formats->addItem(QString("%1,%2").
-                                arg(fmt.resolution().width()).
-                                arg(fmt.resolution().height()));
-    }
-    captureSession->setCamera(camera);
-    captureSession->setVideoSink(videoSink);
-    camera->start();
+    // Disable lE_videoSourceUrl by default
+    ui->lE_videoSourceUrl->setEnabled(false);
 
-    connect(videoSink, &QVideoSink::videoFrameChanged, this, &MainWindow::processFrame);
-    connect(ui->cB_edgeDetection, &QCheckBox::stateChanged, this, &MainWindow::updateCannyState);
+    // Connect video source selection
+    connect(ui->cb_videoSources, &QComboBox::currentTextChanged, this, [this, cameras](const QString &text) {
+        clearScene();
+        stopRtspCapture();
+        disconnect(videoSink, &QVideoSink::videoFrameChanged, this, &MainWindow::processFrame);
+        ui->cb_formats->clear();
+        ui->lE_videoSourceUrl->setEnabled(text == "RTSP");
 
-    connect(ui->cb_videoSources, &QComboBox::currentTextChanged, [this, cameras](const QString &text) {
-        for (const QCameraDevice &cam : cameras) {
-            if (text == cam.description()) {
-                clearScene();
-                camera->stop();
-                camera = new QCamera(cam, this);
-                ui->cb_formats->clear();
-                QList<QCameraFormat> formats = cam.videoFormats();
-                for (const QCameraFormat &fmt : formats) {
-                    ui->cb_formats->addItem(QString("%1,%2").
-                                            arg(fmt.resolution().width()).
-                                            arg(fmt.resolution().height()));
-                }
-                if (!formats.isEmpty()) {
-                    camera->setCameraFormat(formats.first());
-                }
-                captureSession->setCamera(camera);
-                captureSession->setVideoSink(videoSink);
-                captureSession->setVideoOutput(videoItem);
-                camera->start();
+        if (text == "RTSP") {
+            ui->cb_formats->setEnabled(false);
+            if (!ui->lE_videoSourceUrl->text().isEmpty()) {
+                startRtspCapture(ui->lE_videoSourceUrl->text());
                 updateVideoSize();
+            }
+        } else {
+            ui->cb_formats->setEnabled(true);
+            for (const QCameraDevice &cam : cameras) {
+                if (text == cam.description()) {
+                    if (camera) camera->stop();
+                    camera = new QCamera(cam, this);
+                    QList<QCameraFormat> formats = cam.videoFormats();
+                    for (const QCameraFormat &fmt : formats) {
+                        ui->cb_formats->addItem(QString("%1,%2")
+                                                    .arg(fmt.resolution().width())
+                                                    .arg(fmt.resolution().height()));
+                    }
+                    if (!formats.isEmpty()) {
+                        camera->setCameraFormat(formats.first());
+                        fontSize = formats.first().resolution().width() / 300 * 10;
+                    }
+                    connect(videoSink, &QVideoSink::videoFrameChanged, this, &MainWindow::processFrame,Qt::UniqueConnection);
+                    captureSession->setCamera(camera);
+                    captureSession->setVideoSink(videoSink);
+                    camera->start();
+                    updateVideoSize();
+                    break;
+                }
             }
         }
     });
-    connect(ui->cb_formats,&QComboBox::currentIndexChanged,[this, cameras](int index){
-        if (index < 0) return;
+
+    // Connect RTSP URL changes
+    connect(ui->lE_videoSourceUrl, &QLineEdit::textChanged, this, [this](const QString &text) {
+        if (ui->cb_videoSources->currentText() == "RTSP" && !text.isEmpty()) {
+            clearScene();
+            stopRtspCapture();
+            startRtspCapture(text);
+            updateVideoSize();
+        }
+    });
+
+    // Connect format selection
+    connect(ui->cb_formats, &QComboBox::currentIndexChanged, this, [this, cameras](int index) {
+        if (index < 0 || ui->cb_videoSources->currentText() == "RTSP") return;
 
         for (const QCameraDevice &cam : cameras) {
             if (ui->cb_videoSources->currentText() == cam.description()) {
                 clearScene();
-                camera->stop();
+                if (camera) camera->stop();
                 camera = new QCamera(cam, this);
                 QList<QCameraFormat> formats = cam.videoFormats();
-                if (index >= formats.size()) {
-                    return;
-                }
+                if (index >= formats.size()) return;
                 if (!formats.isEmpty()) {
                     camera->setCameraFormat(formats.at(index));
-                    fontSize =formats.at(index).resolution().width()/300*10;
+                    fontSize = formats.at(index).resolution().width() / 300 * 10;
                 }
                 captureSession->setCamera(camera);
                 captureSession->setVideoSink(videoSink);
-                captureSession->setVideoOutput(videoItem);
                 camera->start();
                 updateVideoSize();
                 break;
             }
         }
     });
+
+    // Connect video sink and Canny checkbox
+    connect(videoSink, &QVideoSink::videoFrameChanged, this, &MainWindow::processFrame,Qt::UniqueConnection);
+    connect(ui->cB_edgeDetection, &QCheckBox::stateChanged, this, &MainWindow::updateCannyState);
+
+    // Select first camera if available
+    if (!cameras.isEmpty()) {
+        camera = new QCamera(cameras.first(), this);
+        captureSession->setCamera(camera);
+        captureSession->setVideoSink(videoSink);
+        camera->start();
+    }
 }
 
 MainWindow::~MainWindow()

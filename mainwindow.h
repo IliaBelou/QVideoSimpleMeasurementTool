@@ -3,20 +3,23 @@
 
 #include <QMainWindow>
 #include <QCamera>
+#include <QCameraDevice>
 #include <QMediaCaptureSession>
 #include <QVideoSink>
-#include <QGraphicsView>
+#include <QMediaDevices>
 #include <QGraphicsScene>
-#include <QGraphicsVideoItem>
+#include <QGraphicsPixmapItem>
+#include <QGraphicsItem>
+#include <QGraphicsLineItem>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsTextItem>
+#include <QVideoFrame>
 #include <QToolBar>
 #include <QActionGroup>
-#include <QMediaDevices>
-#include <QCameraFormat>
- #include <QGraphicsLineItem>
+#include <QTimer>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <cmath>
+#include <opencv2/videoio.hpp>
 #include "tcameraviewwithpainter.h"
 #include "cvmatandqimage.h"
 
@@ -40,7 +43,6 @@ private:
     QCamera *camera;
     QMediaCaptureSession *captureSession;
     QGraphicsScene *scene;
-    QGraphicsVideoItem *videoItem;
     QVideoSink *videoSink;
     DrawMode currentDrawMode;
     QPointF startPoint;
@@ -49,6 +51,8 @@ private:
     QGraphicsItem *lastItem;
     QGraphicsTextItem *tempTextItem;
     QGraphicsTextItem *lastTextItem;
+    cv::VideoCapture *rtspCapture = nullptr;
+    QTimer *rtspTimer = nullptr;
     bool isSettingCircleCenter;
     bool isDrawing;
     int fontSize  = 10;
@@ -58,10 +62,11 @@ private:
     void setupGraphicsView();
     void updateVideoSize();
     void clearScene();
-    QImage Mat2QImage(const cv::Mat &mat);
-    cv::Mat QImage2Mat(const QImage &image);
 private slots:
     void processFrame(const QVideoFrame &frame);
     void updateCannyState(int state);
+    void startRtspCapture(const QString &url);
+    void stopRtspCapture();
+    void processRtspFrame();
 };
 #endif // MAINWINDOW_H
