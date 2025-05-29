@@ -32,6 +32,123 @@ void MainWindow::initializeToolBar()
     });
 }
 
+void MainWindow::processFrame(const QVideoFrame &frame)
+{
+    QVideoFrame videoFrame = frame;
+    if (!videoFrame.isValid() || !videoFrame.map(QVideoFrame::ReadOnly)) {
+        qDebug() << "Invalid or unmappable video frame";
+        return;
+    }
+
+    QImage image = videoFrame.toImage();
+    videoFrame.unmap();
+
+    if (image.isNull()) {
+        qDebug() << "Null QImage";
+        return;
+    }
+
+    qDebug() << "QImage format:" << image.format() << "size:" << image.size();
+
+    // Convert and copy QImage to ensure stable memory
+    if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32) {
+        qDebug() << "Converting QImage to Format_RGB32";
+        image = image.convertToFormat(QImage::Format_RGB32).copy(); // Deep copy
+        if (image.isNull()) {
+            qDebug() << "Failed to convert QImage to Format_RGB32";
+            return;
+        }
+    }
+
+    //cv::Mat mat(image.height(), image.width(), CV_8UC4, (void*)image.constBits(), image.bytesPerLine());
+    cv::Mat mat = QtOcv::image2Mat(image);
+    if (mat.empty()) {
+        qDebug() << "Empty cv::Mat";
+        return;
+    }
+    qDebug() << "cv::Mat size:" << mat.cols << "x" << mat.rows << "type:" << mat.type();
+
+    cv::Mat processed = mat.clone();
+    if (processed.empty()) {
+        qDebug() << "Empty processed cv::Mat";
+        return;
+    }
+
+
+    if (enableCanny) {
+        cv::Mat gray;
+        qDebug() << "Before cvtColor: processed size:" << processed.cols << "x" << processed.rows << "type:" << processed.type();
+        try {
+            cv::cvtColor(processed, gray, cv::COLOR_BGR2GRAY);
+        } catch (const cv::Exception& e) {
+            qDebug() << "cv::cvtColor failed:" << e.what();
+            return;
+        }
+        if (gray.empty()) {
+            qDebug() << "Empty gray cv::Mat after cvtColor";
+            return;
+        }
+        qDebug() << "Gray size:" << gray.cols << "x" << gray.rows << "type:" << gray.type();
+
+        cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
+        cv::Mat edges;
+        cv::Canny(gray, edges, ui->dSb_edgeDetectionThr1->value(), ui->dSb_edgeDetectionThr2->value());
+        // std::vector<std::vector<cv::Point> > contours;
+        // std::vector<cv::Vec4i> hierarchy;
+        // findContours( edges, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE );
+
+        cv::cvtColor(edges, processed, cv::COLOR_GRAY2BGRA);
+    }
+
+    QImage outputImage((const uchar*)processed.data, processed.cols, processed.rows, processed.step, QImage::Format_RGB32);
+    outputImage = outputImage.copy();
+    if (outputImage.isNull()) {
+        qDebug() << "Null output QImage";
+        return;
+    }
+
+    // Ensure GUI updates are thread-safe
+    QMetaObject::invokeMethod(this, [=]() {
+        pixmapItem->setPixmap(QPixmap::fromImage(outputImage));
+        scene->setSceneRect(0, 0, outputImage.width(), outputImage.height());
+    }, Qt::QueuedConnection);
+}
+
+QImage MainWindow::Mat2QImage(const cv::Mat &mat)
+{
+    if (mat.empty()) return QImage();
+    if (mat.type() == CV_8UC3) {
+        QImage image(mat.cols, mat.rows, QImage::Format_RGB888);
+        memcpy(image.bits(), mat.data, mat.total() * mat.elemSize());
+        return image.rgbSwapped();
+    } else if (mat.type() == CV_8UC1) {
+        QImage image(mat.cols, mat.rows, QImage::Format_Grayscale8);
+        memcpy(image.bits(), mat.data, mat.total() * mat.elemSize());
+        return image;
+    }
+    return QImage();
+}
+
+cv::Mat MainWindow::QImage2Mat(const QImage &image)
+{
+    if (image.isNull()) return cv::Mat();
+    if (image.format() == QImage::Format_RGB888) {
+        cv::Mat mat(image.height(), image.width(), CV_8UC3);
+        memcpy(mat.data, image.bits(), image.sizeInBytes());
+        return mat;
+    } else if (image.format() == QImage::Format_Grayscale8) {
+        cv::Mat mat(image.height(), image.width(), CV_8UC1);
+        memcpy(mat.data, image.bits(), image.sizeInBytes());
+        return mat;
+    }
+    return cv::Mat();
+}
+
+void MainWindow::updateCannyState(int state)
+{
+    enableCanny = (state == Qt::Checked);
+}
+
 void MainWindow::clearScene()
 {
     if (scene == nullptr) {
@@ -54,9 +171,8 @@ void MainWindow::setupGraphicsView()
     scene = new QGraphicsScene(this);
     ui->vidWgt->setScene(scene);
 
-    videoItem = new QGraphicsVideoItem();
-    scene->addItem(videoItem);
-    captureSession->setVideoOutput(videoItem);
+    pixmapItem = new QGraphicsPixmapItem();
+    scene->addItem(pixmapItem);
 
     // Обработка событий мыши
     connect(ui->vidWgt, &TCameraViewWithPainter::mousePressed, this, [this](QMouseEvent *event) {
@@ -301,26 +417,14 @@ void MainWindow::setupGraphicsView()
 
 void MainWindow::updateVideoSize()
 {
-    if (!videoItem || !camera || !camera->isActive()) {
-        qDebug() << "Camera is not active or videoItem/camera is null";
-        return;
-    }
+    if (!pixmapItem || !camera || !camera->isActive()) return;
 
     QSize videoSize = camera->cameraFormat().resolution();
-    if (!videoSize.isValid()) {
-        videoSize = videoItem->size().toSize(); // Пробуем получить размер из QGraphicsVideoItem
-        qDebug() << "Falling back to videoItem size:" << videoSize;
-    }
+    if (!videoSize.isValid()) return;
 
-    if (!videoSize.isValid()) {
-        qDebug() << "Still invalid video size";
-        return;
-    }
-
-    videoItem->setSize(videoSize);
     scene->setSceneRect(0, 0, videoSize.width(), videoSize.height());
-    ui->vidWgt->fitInView(videoItem, Qt::KeepAspectRatio);
-    ui->vidWgt->centerOn(videoItem);
+    ui->vidWgt->resetTransform();
+    ui->vidWgt->fitInView(pixmapItem, Qt::KeepAspectRatio);
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -329,6 +433,8 @@ MainWindow::MainWindow(QWidget *parent)
     , camera(nullptr)
     , captureSession(new QMediaCaptureSession(this))
     , currentDrawMode(None)
+    , videoSink(new QVideoSink(this))
+    , pixmapItem(nullptr)
 {
     ui->setupUi(this);
     initializeToolBar();
@@ -353,7 +459,11 @@ MainWindow::MainWindow(QWidget *parent)
                                 arg(fmt.resolution().height()));
     }
     captureSession->setCamera(camera);
+    captureSession->setVideoSink(videoSink);
     camera->start();
+
+    connect(videoSink, &QVideoSink::videoFrameChanged, this, &MainWindow::processFrame);
+    connect(ui->cB_edgeDetection, &QCheckBox::stateChanged, this, &MainWindow::updateCannyState);
 
     connect(ui->cb_videoSources, &QComboBox::currentTextChanged, [this, cameras](const QString &text) {
         for (const QCameraDevice &cam : cameras) {
@@ -372,6 +482,7 @@ MainWindow::MainWindow(QWidget *parent)
                     camera->setCameraFormat(formats.first());
                 }
                 captureSession->setCamera(camera);
+                captureSession->setVideoSink(videoSink);
                 captureSession->setVideoOutput(videoItem);
                 camera->start();
                 updateVideoSize();
@@ -395,6 +506,7 @@ MainWindow::MainWindow(QWidget *parent)
                     fontSize =formats.at(index).resolution().width()/300*10;
                 }
                 captureSession->setCamera(camera);
+                captureSession->setVideoSink(videoSink);
                 captureSession->setVideoOutput(videoItem);
                 camera->start();
                 updateVideoSize();

@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>516</width>
-    <height>441</height>
+    <width>610</width>
+    <height>518</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0,0">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0,0,0">
     <item>
      <widget class="TCameraViewWithPainter" name="vidWgt"/>
     </item>
@@ -63,6 +63,9 @@
         <property name="decimals">
          <number>4</number>
         </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
+        </property>
        </widget>
       </item>
      </layout>
@@ -83,6 +86,60 @@
         </property>
         <property name="decimals">
          <number>4</number>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_6">
+      <item>
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>Edge detection</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="cB_edgeDetection">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="dSb_edgeDetectionThr1">
+        <property name="maximum">
+         <double>900.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>100.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="dSb_edgeDetectionThr2">
+        <property name="maximum">
+         <double>900.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>200.000000000000000</double>
         </property>
        </widget>
       </item>
@@ -106,7 +163,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>516</width>
+     <width>610</width>
      <height>26</height>
     </rect>
    </property>

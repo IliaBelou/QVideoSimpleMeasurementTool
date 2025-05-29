@@ -15,6 +15,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Multimedia MultimediaWidgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Multimedia MultimediaWidgets)
 
+set(OpenCV_DIR "C:/opencv/install" CACHE PATH "Path to OpenCV config")
+find_package(OpenCV REQUIRED)
+
+include_directories(${OpenCV_INCLUDE_DIRS})
+
 set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
@@ -22,6 +27,8 @@ set(PROJECT_SOURCES
         mainwindow.ui
         tcameraviewwithpainter.h
         tcameraviewwithpainter.cpp
+        cvmatandqimage.cpp
+        cvmatandqimage.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -49,7 +56,12 @@ else()
     endif()
 endif()
 
-target_link_libraries(VideoSimpleMeasurementTool PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::MultimediaWidgets)
+target_link_libraries(VideoSimpleMeasurementTool PRIVATE
+  Qt${QT_VERSION_MAJOR}::Widgets
+  Qt${QT_VERSION_MAJOR}::Multimedia
+  Qt${QT_VERSION_MAJOR}::MultimediaWidgets
+  ${OpenCV_LIBS}
+)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
