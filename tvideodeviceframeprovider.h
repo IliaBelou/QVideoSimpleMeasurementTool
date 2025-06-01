@@ -22,7 +22,7 @@ public:
     void setDeviceByDesc(std::string desc) override;
     QList<std::string> getCurrentDeviceAvaliableFormats() override;
     void setCurrentDeviceFormatByIdx(int idx) override;
-    void setUrl(std::string) override;
+    void setUrl(std::string url) override;
 
 protected:
     void run() override;

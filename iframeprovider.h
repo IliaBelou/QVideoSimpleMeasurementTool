@@ -16,7 +16,7 @@ public:
     virtual void setDeviceByDesc(std::string desc) = 0;
     virtual QList<std::string> getCurrentDeviceAvaliableFormats() = 0;
     virtual void setCurrentDeviceFormatByIdx(int idx) = 0;
-    virtual void setUrl(std::string) = 0;
+    virtual void setUrl(std::string url) = 0;
 
     const std::atomic<bool>& isReady() const {
         return frameReady_;

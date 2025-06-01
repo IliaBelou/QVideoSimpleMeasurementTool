@@ -100,7 +100,6 @@ void TVideoDeviceFrameProvider::run()
 
 void TVideoDeviceFrameProvider::updateFrame(const QVideoFrame &frame)
 {
-    qDebug() << "updateFrame thread:" << QThread::currentThread();
     std::lock_guard<std::mutex> lock(framemtx_);
     frame_ = frame.toImage();
     frameReady_ = true;

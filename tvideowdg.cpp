@@ -1,5 +1,6 @@
 #include "tvideowdg.h"
 #include "tedgedetector.h"
+#include "trtcpframeprovider.h"
 #include "tvideodeviceframeprovider.h"
 
 TVideoWdg::TVideoWdg(QWidget *parent) :
@@ -21,6 +22,7 @@ TVideoWdg::TVideoWdg(QWidget *parent) :
     fproviders_.append(usbDevs_);
     auto usbDevsReady = [this]() {
         videosrcDesc_.append(usbDevs_->getDeviceDesc());
+        videofmtDesc_.clear();
         videofmtDesc_.append(usbDevs_->getCurrentDeviceAvaliableFormats());
         emit videoSourcesChanged(videosrcDesc_);
         emit videoFormatsChanged(videofmtDesc_);
@@ -83,37 +85,25 @@ void TVideoWdg::changeVideofmt(int idx)
 
 void TVideoWdg::incZoom()
 {
-    // Увеличиваем масштаб на фиксированную величину
     zoomFactor_ += ZOOM_FACTOR;
-    // Ограничиваем максимальный масштаб до 1.0 (100%)
     if (zoomFactor_ > 1.0) {
         zoomFactor_ = 1.0;
     }
-    // Сбрасываем текущую трансформацию
     resetTransform();
-    // Применяем новый масштаб
     scale(zoomFactor_, zoomFactor_);
-    // Обновляем отображение, сохраняя пропорции
     fitInView(currentFrame_, Qt::KeepAspectRatio);
-    // Обновляем сцену
     scene_->update();
 }
 
 void TVideoWdg::decZoom()
 {
-    // Уменьшаем масштаб на фиксированную величину
     zoomFactor_ -= ZOOM_FACTOR;
-    // Ограничиваем минимальный масштаб до 0.1 (10%)
     if (zoomFactor_ < 0.05) {
         zoomFactor_ = 0.05;
     }
-    // Сбрасываем текущую трансформацию
     resetTransform();
-    // Применяем новый масштаб
     scale(zoomFactor_, zoomFactor_);
-    // Обновляем отображение, сохраняя пропорции
     fitInView(currentFrame_, Qt::KeepAspectRatio);
-    // Обновляем сцену
     scene_->update();
 }
 
@@ -134,6 +124,18 @@ void TVideoWdg::useEdgeDetector(bool use)
     } else {
         removeMiddlewareByType<TEdgeDetector>();
     }
+}
+
+void TVideoWdg::addRTCPsource(QString url)
+{
+    rtcp_ = new TRTCPFrameProvider;
+    fproviders_.append(rtcp_);
+    rtcp_->setUrl(url.toStdString());
+    auto rtcpReady = [this]() {
+        videosrcDesc_.append(rtcp_->getDeviceDesc());
+        emit videoSourcesChanged(videosrcDesc_);
+    };
+    rtcp_->start(rtcpReady);
 }
 
 void TVideoWdg::addMiddleware(IFrameMiddleware* middleware) {

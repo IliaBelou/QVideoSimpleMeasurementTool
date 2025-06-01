@@ -25,8 +25,8 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
-        tcameraviewwithpainter.h
-        tcameraviewwithpainter.cpp
+
+
         cvmatandqimage.cpp
         cvmatandqimage.h
         iframeprovider.h
@@ -47,6 +47,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${PROJECT_SOURCES}
         assets/icons/icons8-line-50.png
         icons.qrc
+        trtcpframeprovider.h trtcpframeprovider.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET VideoSimpleMeasurementTool APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
