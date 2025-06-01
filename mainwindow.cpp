@@ -11,7 +11,6 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     initializeToolBar();
-    setupGraphicsView();
 
     connect(ui->vidWgt, &TVideoWdg::videoSourcesChanged, [this](QList<std::string> srcs) {
         QSignalBlocker blocker(ui->cb_videoSources);
@@ -40,6 +39,9 @@ MainWindow::MainWindow(QWidget *parent)
     // Connect format selection
     connect(ui->cb_formats, &QComboBox::currentIndexChanged, ui->vidWgt, &TVideoWdg::changeVideofmt);
 
+    // Отрисовка граф.элементов / painter
+    connect(ui->dsB_mmInPixelsHeight,&QDoubleSpinBox::valueChanged,ui->vidWgt->getPainter(),&TSurfacePainter::setmmInPixelsHeight);
+    connect(ui->dsB_mmInPixelsWidth,&QDoubleSpinBox::valueChanged,ui->vidWgt->getPainter(),&TSurfacePainter::setmmInPixelsWidth);
 }
 
 void MainWindow::initializeToolBar()
@@ -79,6 +81,24 @@ void MainWindow::initializeToolBar()
     connect(actionClearScene, &QAction::triggered, this, [this](bool state) {
         ui->vidWgt->getPainter()->clearScene();
     });
+
+    QAction *actionZoomPlus = toolBar->addAction(
+        QIcon(":/assets/icons/zoom-in.png"),
+        "Увеличить"
+        );
+    connect(actionZoomPlus, &QAction::triggered, ui->vidWgt, &TVideoWdg::incZoom);
+
+    QAction *actionZoomMinus = toolBar->addAction(
+        QIcon(":/assets/icons/zoom-out.png"),
+        "Уменьшить"
+        );
+    connect(actionZoomMinus, &QAction::triggered, ui->vidWgt, &TVideoWdg::decZoom);
+
+    QAction *actionFit = toolBar->addAction(
+        QIcon(":/assets/icons/fit.png"),
+        "Вписать"
+        );
+    connect(actionFit, &QAction::triggered, ui->vidWgt, &TVideoWdg::fit);
 }
 
 void MainWindow::processFrame(const QVideoFrame &frame)

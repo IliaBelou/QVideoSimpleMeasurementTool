@@ -46,7 +46,7 @@ void TSurfacePainter::handleMousePressed(QMouseEvent *event)
             }
             isDrawing_ = true;
             QGraphicsEllipseItem *circle = new QGraphicsEllipseItem(0, 0, 0, 0);
-            circle->setPen(QPen(Qt::blue, 1, Qt::DashLine));
+            circle->setPen(QPen(Qt::blue, lineWidth_, Qt::DashLine));
             scene_->addItem(circle);
             tempItem_ = circle;
 
@@ -63,7 +63,7 @@ void TSurfacePainter::handleMousePressed(QMouseEvent *event)
         }
         isDrawing_ = true;
         QGraphicsLineItem *line = new QGraphicsLineItem(startPoint_.x(), startPoint_.y(), startPoint_.x(), startPoint_.y());
-        line->setPen(QPen(Qt::red, 1, Qt::DashLine));
+        line->setPen(QPen(Qt::red, lineWidth_, Qt::DashLine));
         scene_->addItem(line);
         tempItem_ = line;
 
@@ -178,7 +178,7 @@ void TSurfacePainter::handleMouseReleased(QMouseEvent *event)
         QGraphicsLineItem *line = new QGraphicsLineItem(
             startPoint_.x(), startPoint_.y(), endPoint.x(), endPoint.y()
             );
-        line->setPen(QPen(Qt::red, 1));
+        line->setPen(QPen(Qt::red, lineWidth_));
         scene_->addItem(line);
         lastItem_ = line;
         paintedObjInScene.append(lastItem_);
@@ -217,7 +217,7 @@ void TSurfacePainter::handleMouseReleased(QMouseEvent *event)
         QGraphicsEllipseItem *circle = new QGraphicsEllipseItem(
             startPoint_.x() - radius, startPoint_.y() - radius, radius * 2, radius * 2
             );
-        circle->setPen(QPen(Qt::blue, 1));
+        circle->setPen(QPen(Qt::blue, lineWidth_));
         scene_->addItem(circle);
         lastItem_ = circle;
         paintedObjInScene.append(lastItem_);

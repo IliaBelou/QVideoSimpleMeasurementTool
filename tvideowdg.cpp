@@ -1,4 +1,5 @@
 #include "tvideowdg.h"
+#include "tvideodeviceframeprovider.h"
 
 TVideoWdg::TVideoWdg(QWidget *parent) :
     QGraphicsView(parent),
@@ -25,7 +26,6 @@ TVideoWdg::TVideoWdg(QWidget *parent) :
     };
     usbDevs_->start(usbDevsReady);
 
-
     // Frame update
     updateFrame_ = new QTimer;
     connect(updateFrame_,&QTimer::timeout,[this]{
@@ -48,13 +48,13 @@ TSurfacePainter *TVideoWdg::getPainter()
 void TVideoWdg::updateFrame()
 {
     if (fproviders_.at(currentActiveVideoProviderIdx_)->isReady()) {
-        QImage img = fproviders_.at(currentActiveVideoProviderIdx_)->getFrame();
+        currentFrameImg_ = fproviders_.at(currentActiveVideoProviderIdx_)->getFrame();
         currentFrame_->setPixmap(
             QPixmap{}.fromImage(
-                img
+                currentFrameImg_
             )
         );
-        updateVideoSize(img);
+        updateVideoSize(currentFrameImg_);
         scene_->update();
     }
 }
@@ -79,9 +79,55 @@ void TVideoWdg::changeVideofmt(int idx)
     fproviders_.at(currentActiveVideoProviderIdx_)->setCurrentDeviceFormatByIdx(idx);
 }
 
+void TVideoWdg::incZoom()
+{
+    // Увеличиваем масштаб на фиксированную величину
+    zoomFactor_ += ZOOM_FACTOR;
+    // Ограничиваем максимальный масштаб до 1.0 (100%)
+    if (zoomFactor_ > 1.0) {
+        zoomFactor_ = 1.0;
+    }
+    // Сбрасываем текущую трансформацию
+    resetTransform();
+    // Применяем новый масштаб
+    scale(zoomFactor_, zoomFactor_);
+    // Обновляем отображение, сохраняя пропорции
+    fitInView(currentFrame_, Qt::KeepAspectRatio);
+    // Обновляем сцену
+    scene_->update();
+}
+
+void TVideoWdg::decZoom()
+{
+    // Уменьшаем масштаб на фиксированную величину
+    zoomFactor_ -= ZOOM_FACTOR;
+    // Ограничиваем минимальный масштаб до 0.1 (10%)
+    if (zoomFactor_ < 0.05) {
+        zoomFactor_ = 0.05;
+    }
+    // Сбрасываем текущую трансформацию
+    resetTransform();
+    // Применяем новый масштаб
+    scale(zoomFactor_, zoomFactor_);
+    // Обновляем отображение, сохраняя пропорции
+    fitInView(currentFrame_, Qt::KeepAspectRatio);
+    // Обновляем сцену
+    scene_->update();
+}
+
+void TVideoWdg::fit()
+{
+    scene_->setSceneRect(0, 0, currentFrameImg_.width(), currentFrameImg_.height());
+    zoomFactor_ = 1.0;
+    resetTransform();
+    fitInView(currentFrame_, Qt::KeepAspectRatio);
+}
+
 void TVideoWdg::updateVideoSize(const QImage& img)
 {
     scene_->setSceneRect(0, 0, img.width(), img.height());
+    img.width()/30 > 60 ? painter_->setFontSize(60) :  painter_->setFontSize(img.width()/30);
+    img.width()/300 > 5 ? painter_->setLineWidth(5) :  painter_->setLineWidth(img.width()/300);
     resetTransform();
-    fitInView(currentFrame_, Qt::KeepAspectRatio);
+    scale(zoomFactor_, zoomFactor_);
 }

@@ -9,10 +9,10 @@
 #include "tsurfacepainter.h"
 #include "iframemiddleware.h"
 #include "iframeprovider.h"
-#include "tvideodeviceframeprovider.h"
 
 
 constexpr int FRAME_UPDATE_PERIOD = 50; // in ms
+constexpr double ZOOM_FACTOR = 0.05;
 
 class TVideoWdg : public QGraphicsView
 {
@@ -32,6 +32,9 @@ public slots:
     void updateFrame();
     void changeVideoSrc(const QString& src);
     void changeVideofmt(int idx);
+    void incZoom();
+    void decZoom();
+    void fit();
 protected:
     void mousePressEvent(QMouseEvent *event) override { emit mousePressed(event); }
     void mouseMoveEvent(QMouseEvent *event) override { emit mouseMoved(event); }
@@ -54,6 +57,8 @@ private:
     QList<std::string> videosrcDesc_;
     QList<std::string> videofmtDesc_;
     IFrameProvider* usbDevs_;
+    double zoomFactor_ = 1.0;
+    QImage currentFrameImg_;
 };
 
 #endif // TVIDEOWDG_H
