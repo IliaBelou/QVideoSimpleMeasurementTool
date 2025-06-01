@@ -35,6 +35,7 @@ public slots:
     void incZoom();
     void decZoom();
     void fit();
+    void useEdgeDetector(bool use);
 protected:
     void mousePressEvent(QMouseEvent *event) override { emit mousePressed(event); }
     void mouseMoveEvent(QMouseEvent *event) override { emit mouseMoved(event); }
@@ -47,7 +48,7 @@ private:
     QGraphicsScene *scene_;
     TSurfacePainter *painter_;
     QList<IFrameProvider* > fproviders_;
-    QList<IFrameMiddleware* > fmiddlewares_;
+    std::vector<std::unique_ptr<IFrameMiddleware> > fmiddlewares_;
     QTimer* updateFrame_;
     QGraphicsPixmapItem *currentFrame_;
     QGraphicsPixmapItem *prevcurrentFrame_;
@@ -59,6 +60,13 @@ private:
     IFrameProvider* usbDevs_;
     double zoomFactor_ = 1.0;
     QImage currentFrameImg_;
+
+    void addMiddleware(IFrameMiddleware *middleware);
+    template<typename T>
+    void removeMiddlewareByType();
+    void removeAllEdgeDetectors();
+    template<typename T>
+    bool findMiddlewareByType();
 };
 
 #endif // TVIDEOWDG_H

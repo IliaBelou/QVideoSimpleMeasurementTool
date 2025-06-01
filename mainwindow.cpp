@@ -42,6 +42,9 @@ MainWindow::MainWindow(QWidget *parent)
     // Отрисовка граф.элементов / painter
     connect(ui->dsB_mmInPixelsHeight,&QDoubleSpinBox::valueChanged,ui->vidWgt->getPainter(),&TSurfacePainter::setmmInPixelsHeight);
     connect(ui->dsB_mmInPixelsWidth,&QDoubleSpinBox::valueChanged,ui->vidWgt->getPainter(),&TSurfacePainter::setmmInPixelsWidth);
+
+    //Обнаружение границ / Edge Detector
+    connect(ui->cB_edgeDetection,&QCheckBox::clicked,ui->vidWgt,&TVideoWdg::useEdgeDetector);
 }
 
 void MainWindow::initializeToolBar()

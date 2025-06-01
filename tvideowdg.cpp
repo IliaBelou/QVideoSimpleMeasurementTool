@@ -1,4 +1,5 @@
 #include "tvideowdg.h"
+#include "tedgedetector.h"
 #include "tvideodeviceframeprovider.h"
 
 TVideoWdg::TVideoWdg(QWidget *parent) :
@@ -49,11 +50,12 @@ void TVideoWdg::updateFrame()
 {
     if (fproviders_.at(currentActiveVideoProviderIdx_)->isReady()) {
         currentFrameImg_ = fproviders_.at(currentActiveVideoProviderIdx_)->getFrame();
-        currentFrame_->setPixmap(
-            QPixmap{}.fromImage(
-                currentFrameImg_
-            )
-        );
+        if (!fmiddlewares_.empty()) {
+            for (const auto& mw : fmiddlewares_) {
+                mw->processFrame(&currentFrameImg_);
+            }
+        }
+        currentFrame_->setPixmap(QPixmap::fromImage(currentFrameImg_));
         updateVideoSize(currentFrameImg_);
         scene_->update();
     }
@@ -121,6 +123,45 @@ void TVideoWdg::fit()
     zoomFactor_ = 1.0;
     resetTransform();
     fitInView(currentFrame_, Qt::KeepAspectRatio);
+}
+
+void TVideoWdg::useEdgeDetector(bool use)
+{
+    if (use) {
+        if (!findMiddlewareByType<TEdgeDetector>()) {
+            addMiddleware(new TEdgeDetector);
+        }
+    } else {
+        removeMiddlewareByType<TEdgeDetector>();
+    }
+}
+
+void TVideoWdg::addMiddleware(IFrameMiddleware* middleware) {
+    fmiddlewares_.push_back(std::unique_ptr<IFrameMiddleware>(middleware));
+}
+
+template<typename T>
+void TVideoWdg::removeMiddlewareByType() {
+    for (auto it = fmiddlewares_.end(); it != fmiddlewares_.begin();) {
+        --it;
+        if (dynamic_cast<T*>(it->get()) != nullptr) {
+            it = fmiddlewares_.erase(it);
+        }
+    }
+}
+
+template<typename T>
+bool TVideoWdg::findMiddlewareByType() {
+    for (const auto& middleware : fmiddlewares_) {
+        if (dynamic_cast<T*>(middleware.get()) != nullptr) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void TVideoWdg::removeAllEdgeDetectors() {
+    removeMiddlewareByType<TEdgeDetector>();
 }
 
 void TVideoWdg::updateVideoSize(const QImage& img)
