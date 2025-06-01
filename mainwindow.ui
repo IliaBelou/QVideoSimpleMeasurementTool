@@ -16,7 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0,0,0,0">
     <item>
-     <widget class="TCameraViewWithPainter" name="vidWgt"/>
+     <widget class="TVideoWdg" name="vidWgt"/>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
@@ -199,9 +199,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>TCameraViewWithPainter</class>
+   <class>TVideoWdg</class>
    <extends>QGraphicsView</extends>
-   <header>tcameraviewwithpainter.h</header>
+   <header>tvideowdg.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

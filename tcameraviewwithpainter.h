@@ -23,6 +23,8 @@ protected:
         QGraphicsView::resizeEvent(event);
         emit resized();
     }
+private:
+
 };
 
 #endif // TCAMERAVIEWWITHPAINTER_H

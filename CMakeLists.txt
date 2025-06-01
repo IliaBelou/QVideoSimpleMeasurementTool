@@ -29,6 +29,16 @@ set(PROJECT_SOURCES
         tcameraviewwithpainter.cpp
         cvmatandqimage.cpp
         cvmatandqimage.h
+        iframeprovider.h
+        tsurfacepainter.h
+        tsurfacepainter.cpp
+        tvideowdg.h
+        tvideowdg.cpp
+        tvideodeviceframeprovider.h
+        tvideodeviceframeprovider.cpp
+        iframemiddleware.h
+        tedgedetector.h
+        tedgedetector.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

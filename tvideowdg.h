@@ -1,111 +1,59 @@
 #ifndef TVIDEOWDG_H
 #define TVIDEOWDG_H
 
+#include <QGraphicsView>
 #include <QObject>
-#include <QVideoWidget>
-#include <QPoint>
-#include <QMouseEvent>
-#include <QPainter>
-#include <QWidget>
-#include <QDebug>
 #include <QTimer>
+#include <QPixmap>
 
-class TLinePainter : public QWidget {
+#include "tsurfacepainter.h"
+#include "iframemiddleware.h"
+#include "iframeprovider.h"
+#include "tvideodeviceframeprovider.h"
+
+
+constexpr int FRAME_UPDATE_PERIOD = 50; // in ms
+
+class TVideoWdg : public QGraphicsView
+{
     Q_OBJECT
 public:
-    TLinePainter(QWidget *parent = nullptr);
-    enum class LineType : uint
-    {
-        LINE = 1,
-        ARC = 2
-    };
-    void handlePressEvent(QMouseEvent *event) {
-        qDebug() << "leftpressPainter";
-        if (event->button() == Qt::LeftButton) {
-            if (!isDrawing) {
-                startPoint = event->pos();
-                isDrawing = true;
-            } else {
-                endPoint = event->pos();
-                isDrawing = false;
-                update();
-            }
-        }
-    }
-
-    void handlemouseMoveEvent(QMouseEvent *event){
-        qDebug() << "mouseMovePainter";
-        if (isDrawing) {
-            endPoint = event->pos();
-            update();
-        }
-    }
-
-    void paintEvent(QPaintEvent *event) override {
-        QWidget::paintEvent(event);
-        if (isDrawing || !endPoint.isNull()) {
-            QPainter painter(this);
-            painter.setPen(QPen(Qt::red, 2));
-            painter.drawLine(startPoint, endPoint);
-        }
-    }
-private:
-    QPoint startPoint;
-    QPoint endPoint;
-    bool isDrawing = false;
-    LineType curLineType;
-};
-
-class TVideoWdg : public QVideoWidget
-{
-public:
     TVideoWdg(QWidget *parent = nullptr);
+    ~TVideoWdg();
+    TSurfacePainter* getPainter();
+signals:
+    void mousePressed(QMouseEvent *event);
+    void mouseMoved(QMouseEvent *event);
+    void mouseReleased(QMouseEvent *event);
+    void resized();
+    void videoSourcesChanged(QList<std::string> srcs);
+    void videoFormatsChanged(QList<std::string> fmts); 
+public slots:
+    void updateFrame();
+    void changeVideoSrc(const QString& src);
+    void changeVideofmt(int idx);
 protected:
-    void mousePressEvent(QMouseEvent *event) override {
-        if (event->button() == Qt::LeftButton) {
-            overlay->handlePressEvent(event);
-        }
-    }
-
-    void mouseMoveEvent(QMouseEvent *event) override {
-        overlay->handlemouseMoveEvent(event);
-    }
-
-    void paintEvent(QPaintEvent *event) override {
-        QVideoWidget::paintEvent(event);
-    }
-
-    bool eventFilter(QObject* obj, QEvent* event) override {
-        if (obj == this) {
-            switch (event->type()) {
-            case QEvent::Move:
-            case QEvent::Resize:
-            case QEvent::Show:
-            case QEvent::Hide:
-            case QEvent::WindowActivate:
-                updateOverlayPosition();
-                break;
-            default:
-                break;
-            }
-        }
-        return QVideoWidget::eventFilter(obj, event);
-    }
-
-    void updateOverlayPosition() {
-        if (!overlay) return;
-
-        if (isVisible()) {
-            QPoint globalPos = mapToGlobal(QPoint(0, 0));
-            overlay->setGeometry(QRect(globalPos, size()));
-            overlay->show();
-            overlay->raise();
-        } else {
-            overlay->hide();
-        }
+    void mousePressEvent(QMouseEvent *event) override { emit mousePressed(event); }
+    void mouseMoveEvent(QMouseEvent *event) override { emit mouseMoved(event); }
+    void mouseReleaseEvent(QMouseEvent *event) override { emit mouseReleased(event); }
+    void resizeEvent(QResizeEvent *event) override {
+        QGraphicsView::resizeEvent(event);
+        emit resized();
     }
 private:
-    TLinePainter *overlay;
+    QGraphicsScene *scene_;
+    TSurfacePainter *painter_;
+    QList<IFrameProvider* > fproviders_;
+    QList<IFrameMiddleware* > fmiddlewares_;
+    QTimer* updateFrame_;
+    QGraphicsPixmapItem *currentFrame_;
+    QGraphicsPixmapItem *prevcurrentFrame_;
+    void updateVideoSize(const QImage &img);
+    int currentActiveVideoProviderIdx_ = 0;
+    std::string currentActiveFormatSrc_{};
+    QList<std::string> videosrcDesc_;
+    QList<std::string> videofmtDesc_;
+    IFrameProvider* usbDevs_;
 };
 
 #endif // TVIDEOWDG_H
