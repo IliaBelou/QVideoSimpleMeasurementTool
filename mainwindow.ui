@@ -11,7 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>VideoSimpleMeasurementTool</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="icons.qrc">
+    <normaloff>:/assets/icons/measure.png</normaloff>:/assets/icons/measure.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
@@ -187,9 +191,11 @@
   <customwidget>
    <class>TVideoWdg</class>
    <extends>QGraphicsView</extends>
-   <header>tvideowdg.h</header>
+   <header>video_wdg/tvideowdg.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="icons.qrc"/>
+ </resources>
  <connections/>
 </ui>

@@ -3,7 +3,7 @@
 
 #include <QDebug>
 #include "iframemiddleware.h"
-#include "cvmatandqimage.h"
+#include "video_wdg/cv_to_qt_image/cvmatandqimage.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>

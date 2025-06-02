@@ -1,7 +1,7 @@
 #include "tvideowdg.h"
-#include "tedgedetector.h"
-#include "trtcpframeprovider.h"
-#include "tvideodeviceframeprovider.h"
+#include "frame_middleware/tedgedetector.h"
+#include "frame_providers/trtcpframeprovider.h"
+#include "frame_providers/tvideodeviceframeprovider.h"
 
 TVideoWdg::TVideoWdg(QWidget *parent) :
     QGraphicsView(parent),

@@ -6,9 +6,9 @@
 #include <QTimer>
 #include <QPixmap>
 
-#include "tsurfacepainter.h"
-#include "iframemiddleware.h"
-#include "iframeprovider.h"
+#include "video_wdg/surface_painter/tsurfacepainter.h"
+#include "video_wdg/frame_middleware/iframemiddleware.h"
+#include "video_wdg/frame_providers/iframeprovider.h"
 
 constexpr int FRAME_UPDATE_PERIOD = 50; // in ms
 constexpr double ZOOM_FACTOR = 0.05;

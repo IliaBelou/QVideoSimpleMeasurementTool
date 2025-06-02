@@ -6,5 +6,6 @@
         <file>assets/icons/zoom-in.png</file>
         <file>assets/icons/zoom-out.png</file>
         <file>assets/icons/fit.png</file>
+        <file>assets/icons/measure.png</file>
     </qresource>
 </RCC>

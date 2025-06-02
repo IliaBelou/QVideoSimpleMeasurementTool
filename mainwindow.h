@@ -4,7 +4,6 @@
 #include <QMainWindow>
 #include <QToolBar>
 #include <QActionGroup>
-#include "cvmatandqimage.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {

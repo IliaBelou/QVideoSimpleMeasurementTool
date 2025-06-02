@@ -18,6 +18,9 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Multimedia Multim
 set(OpenCV_DIR "C:/opencv/install" CACHE PATH "Path to OpenCV config")
 find_package(OpenCV REQUIRED)
 
+set(GTest_DIR "C:/Program Files (x86)/googletest-distribution/lib/cmake/GTest" CACHE PATH "Path to GTest config")
+find_package(GTest CONFIG REQUIRED)
+
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 set(PROJECT_SOURCES
@@ -25,20 +28,20 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
-
-
-        cvmatandqimage.cpp
-        cvmatandqimage.h
-        iframeprovider.h
-        tsurfacepainter.h
-        tsurfacepainter.cpp
-        tvideowdg.h
-        tvideowdg.cpp
-        tvideodeviceframeprovider.h
-        tvideodeviceframeprovider.cpp
-        iframemiddleware.h
-        tedgedetector.h
-        tedgedetector.cpp
+        video_wdg/cv_to_qt_image/cvmatandqimage.cpp
+        video_wdg/cv_to_qt_image/cvmatandqimage.h
+        video_wdg/frame_providers/iframeprovider.h
+        video_wdg/surface_painter/tsurfacepainter.h
+        video_wdg/surface_painter/tsurfacepainter.cpp
+        video_wdg/tvideowdg.h
+        video_wdg/tvideowdg.cpp
+        video_wdg/frame_providers/tvideodeviceframeprovider.h
+        video_wdg/frame_providers/tvideodeviceframeprovider.cpp
+        video_wdg/frame_middleware/iframemiddleware.h
+        video_wdg/frame_middleware/tedgedetector.h
+        video_wdg/frame_middleware/tedgedetector.cpp
+        video_wdg/frame_providers/trtcpframeprovider.h
+        video_wdg/frame_providers/trtcpframeprovider.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -47,7 +50,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${PROJECT_SOURCES}
         assets/icons/icons8-line-50.png
         icons.qrc
-        trtcpframeprovider.h trtcpframeprovider.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET VideoSimpleMeasurementTool APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
