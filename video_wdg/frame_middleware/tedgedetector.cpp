@@ -14,7 +14,6 @@ void TEdgeDetector::processFrame(QImage *img)
 
     qDebug() << "QImage format:" << img->format() << "size:" << img->size();
 
-    // Convert and copy QImage to ensure stable memory
     if (img->format() != QImage::Format_RGB32 && img->format() != QImage::Format_ARGB32) {
         qDebug() << "Converting QImage to Format_RGB32";
         *img = img->convertToFormat(QImage::Format_RGB32).copy(); // Deep copy

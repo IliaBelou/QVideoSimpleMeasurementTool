@@ -6,12 +6,22 @@ TSurfacePainter::TSurfacePainter(QGraphicsScene *scene_) : scene_(scene_)
 
 }
 
+TSurfacePainter::~TSurfacePainter()
+{
+    clearScene();
+    clearTempObjs();
+    delete tempItem_;
+    delete lastItem_;
+    delete tempTextItem_;
+    delete lastTextItem_;
+}
+
 void TSurfacePainter::handleMousePressed(QMouseEvent *event)
 {
     if (currentDrawMode_ == DrawMode::None || event->button() != Qt::LeftButton) return;
     if (scene_ == nullptr) return;
 
-    // Удаляем временный элемент и его текст, если они остались
+    // Clear tempory obj elm and text
     clearTempObjs();
 
     auto createTempText = [this](Qt::GlobalColor color) {
@@ -23,24 +33,20 @@ void TSurfacePainter::handleMousePressed(QMouseEvent *event)
     switch (currentDrawMode_) {
     case DrawMode::Circle:
         if (isSettingCircleCenter_) {
-            // Фиксируем центр круга
             if (!scene_->views().isEmpty()) {
                 startPoint_ = scene_->views().first()->mapToScene(event->pos());
             }
             isSettingCircleCenter_ = false;
             isDrawing_ = true;
 
-            // Временный круг для предпросмотра
             QGraphicsEllipseItem *circle = new QGraphicsEllipseItem(0, 0, 0, 0);
             circle->setPen(QPen(Qt::blue, lineWidth_, Qt::DashLine));
             scene_->addItem(circle);
             tempItem_ = circle;
 
-            // Временный текст дял предпросмотра
             createTempText(Qt::blue);
             scene_->addItem(tempTextItem_);
         }else{
-            // Начинаем рисование радиуса круга
             if (!scene_->views().isEmpty()) {
                 startPoint_ = scene_->views().first()->mapToScene(event->pos());
             }
@@ -50,14 +56,12 @@ void TSurfacePainter::handleMousePressed(QMouseEvent *event)
             scene_->addItem(circle);
             tempItem_ = circle;
 
-            // Создаём временный текст
             createTempText(Qt::blue);
             scene_->addItem(tempTextItem_);
         }
         break;
     case DrawMode::Line:
     {
-        // Начинаем рисование линии
         if (!scene_->views().isEmpty()) {
             startPoint_ = scene_->views().first()->mapToScene(event->pos());
         }
@@ -67,7 +71,6 @@ void TSurfacePainter::handleMousePressed(QMouseEvent *event)
         scene_->addItem(line);
         tempItem_ = line;
 
-        // Создаём временный текст
         createTempText(Qt::red);
         scene_->addItem(tempTextItem_);
     }
@@ -86,7 +89,6 @@ void TSurfacePainter::handleMouseMoved(QMouseEvent *event)
         currentPoint = scene_->views().first()->mapToScene(event->pos());
     }
 
-    // CTRL - рисуем горизонтально, SHIFT - рисуем вертикально
     Qt::KeyboardModifiers modifiers = event->modifiers();
     if (currentDrawMode_ == DrawMode::Line) {
         if (modifiers & Qt::ControlModifier) {
@@ -96,7 +98,6 @@ void TSurfacePainter::handleMouseMoved(QMouseEvent *event)
         }
     }
 
-    // Обновляем временный элемент
     switch (currentDrawMode_) {
     case DrawMode::Line:
     {
@@ -105,13 +106,13 @@ void TSurfacePainter::handleMouseMoved(QMouseEvent *event)
             line->setLine(startPoint_.x(), startPoint_.y(), currentPoint.x(), currentPoint.y());
             if (tempTextItem_) {
                 double lengthInpx = QLineF(startPoint_, currentPoint).length();
-                double lengthInmm = lineLenghtInmm(startPoint_,currentPoint);
-                // Обновляем текст
+                double lengthInmm = calculateLineLengthInMm(startPoint_,currentPoint);
+
                 tempTextItem_->setFont(QFont("Arial", fontSize_));
                 tempTextItem_->setPlainText(QString("L: %1 px, %2 mm")
                                                 .arg(lengthInpx, 0, 'f', PX_DISPLAY_PRESICION)
                                                 .arg(lengthInmm, 0, 'f', UNITS_MES_DISPLAY_PRESICION));
-                // Позиционируем текст справа сверху
+
                 double textX = qMax(startPoint_.x(), currentPoint.x()) + TEXT_DISPLAY_OFFSET_HOR_INPX;
                 double textY = qMin(startPoint_.y(), currentPoint.y()) - TEXT_DISPLAY_OFFSET_VERT_INPX;
                 tempTextItem_->setPos(textX, textY);
@@ -130,15 +131,15 @@ void TSurfacePainter::handleMouseMoved(QMouseEvent *event)
             double radiusdx_mm = radiusdx * mmInPixelsWidth_;
             double radiusdy_mm = radiousdy * mmInPixelsHeight_;
             double radiusInmm = std::sqrt(radiusdx_mm * radiusdx_mm + radiusdy_mm * radiusdy_mm);
-            // Обновляем круг
+
             circle->setRect(startPoint_.x() - radiusInPx, startPoint_.y() - radiusInPx, radiusInPx * 2, radiusInPx * 2);
             if (tempTextItem_) {
-                // Текст радиуса
+
                 tempTextItem_->setFont(QFont("Arial", fontSize_));
                 tempTextItem_->setPlainText(QString("R: %1 px, %2 mm")
                                                 .arg(radiusInPx, 0, 'f', PX_DISPLAY_PRESICION)
                                                 .arg(radiusInmm, 0, 'f', UNITS_MES_DISPLAY_PRESICION));
-                // Позиционируем текст справа сверху от круга
+
                 double textX = startPoint_.x() + radiusInPx + TEXT_DISPLAY_OFFSET_HOR_INPX;
                 double textY = startPoint_.y() - radiusInPx - TEXT_DISPLAY_OFFSET_VERT_INPX;
                 tempTextItem_->setPos(textX, textY);
@@ -159,7 +160,7 @@ void TSurfacePainter::handleMouseReleased(QMouseEvent *event)
         endPoint = scene_->views().first()->mapToScene(event->pos());
     }
 
-    // Модификаторы для линий
+
     Qt::KeyboardModifiers modifiers = event->modifiers();
     if (currentDrawMode_ == DrawMode::Line) {
         if (modifiers & Qt::ControlModifier) {
@@ -169,12 +170,12 @@ void TSurfacePainter::handleMouseReleased(QMouseEvent *event)
         }
     }
 
-    // Фиксируем конечный элемент
+
     if (currentDrawMode_ == DrawMode::Line) {
-        // Удаляем временную линию и текст
+
         clearTempObjs();
 
-        // Создаём постоянную линию
+
         QGraphicsLineItem *line = new QGraphicsLineItem(
             startPoint_.x(), startPoint_.y(), endPoint.x(), endPoint.y()
             );
@@ -182,9 +183,9 @@ void TSurfacePainter::handleMouseReleased(QMouseEvent *event)
         scene_->addItem(line);
         lastItem_ = line;
         paintedObjInScene.append(lastItem_);
-        // Создаём постоянный текст
+
         double length = QLineF(startPoint_, endPoint).length();
-        double lengthInmm = lineLenghtInmm(startPoint_,endPoint);
+        double lengthInmm = calculateLineLengthInMm(startPoint_,endPoint);
         lastTextItem_ = new QGraphicsTextItem(QString("L: %1 px, %2 mm")
                                                   .arg(length, 0, 'f', PX_DISPLAY_PRESICION)
                                                   .arg(lengthInmm, 0, 'f', UNITS_MES_DISPLAY_PRESICION));
@@ -196,7 +197,7 @@ void TSurfacePainter::handleMouseReleased(QMouseEvent *event)
         scene_->addItem(lastTextItem_);
         paintedTextObjInScene.append(lastTextItem_);
     } else if (currentDrawMode_ == DrawMode::Circle) {
-        // Удаляем временный круг и текст
+
         if (tempItem_ && scene_->items().contains(tempItem_)) {
             scene_->removeItem(tempItem_);
             delete tempItem_;
@@ -207,7 +208,7 @@ void TSurfacePainter::handleMouseReleased(QMouseEvent *event)
             delete tempTextItem_;
             tempTextItem_ = nullptr;
         }
-        // Создаём постоянный круг
+
         qreal radius = QLineF(startPoint_, endPoint).length();
         qreal dx = endPoint.x() - startPoint_.x();
         qreal dy = endPoint.y() - startPoint_.y();
@@ -221,7 +222,7 @@ void TSurfacePainter::handleMouseReleased(QMouseEvent *event)
         scene_->addItem(circle);
         lastItem_ = circle;
         paintedObjInScene.append(lastItem_);
-        // Создаём постоянный текст
+
         lastTextItem_ = new QGraphicsTextItem(QString("R: %1 px, %2 mm")
                                                   .arg(radius, 0, 'f', 0)
                                                   .arg(radiusInmm, 0, 'f', 2));
@@ -318,24 +319,24 @@ void TSurfacePainter::clearTempObjs()
     }
 }
 
-double TSurfacePainter::lineLenghtOfCircleInmm(QPointF centreInPx, QPointF rPointInPx)
+double TSurfacePainter::calculateCircleRadiusInMm(const QPointF& centreInPx, const QPointF& rPointInPx) const
 {
-    // Вычисляем компоненты по X и Y
+
     double dx = rPointInPx.x() - centreInPx.x();
     double dy = rPointInPx.y() - centreInPx.y();
-    // Переводим в миллиметры
+
     double dx_mm = dx * mmInPixelsWidth_;
     double dy_mm = dy * mmInPixelsHeight_;
     double lengthInmm = std::sqrt(dx_mm * dx_mm + dy_mm * dy_mm);
     return lengthInmm;
 }
 
-double TSurfacePainter::lineLenghtInmm(QPointF centreInPx, QPointF rPointInPx)
+double TSurfacePainter::calculateLineLengthInMm(const QPointF& startPointInPx, const QPointF& endPointInPx) const
 {
-    // Вычисляем компоненты по X и Y
-    double dx = rPointInPx.x() - centreInPx.x();
-    double dy = rPointInPx.y() - centreInPx.y();
-    // Переводим в миллиметры
+
+    double dx = startPointInPx.x() - endPointInPx.x();
+    double dy = startPointInPx.y() - endPointInPx.y();
+
     double dx_mm = dx * mmInPixelsWidth_;
     double dy_mm = dy * mmInPixelsHeight_;
     double lengthInmm = std::sqrt(dx_mm * dx_mm + dy_mm * dy_mm);

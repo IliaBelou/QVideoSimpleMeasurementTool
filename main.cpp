@@ -1,3 +1,11 @@
+/** @file
+ *
+ * TVideoWdg - SimpleMeasurementByVideoTool
+ * By Ilia.belou <ilia.belou@gmail.com>
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
 #include "mainwindow.h"
 
 #include <QApplication>

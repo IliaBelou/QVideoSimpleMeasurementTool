@@ -1,3 +1,11 @@
+/** @file
+ *
+ * TVideoWdg - SimpleMeasurementByVideoTool
+ * By Ilia.belou <ilia.belou@gmail.com>
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -11,6 +19,10 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
+/*!
+ * \class MainWindow
+ * \brief Mainwindow with example usage of TVideoWdg.
+ */
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -19,7 +31,6 @@ public:
     ~MainWindow();
 
 private:
-    enum DrawMode { None, Line, Circle };
     Ui::MainWindow *ui;
 
     void initializeToolBar();

@@ -6,7 +6,7 @@
 TVideoWdg::TVideoWdg(QWidget *parent) :
     QGraphicsView(parent),
     scene_(new QGraphicsScene(this)),
-    painter_(new TSurfacePainter(scene_)),
+    painter_(new TSurfacePainter(scene_.get())),
     currentFrame_(new QGraphicsPixmapItem)
 {
     // Painter
@@ -15,8 +15,8 @@ TVideoWdg::TVideoWdg(QWidget *parent) :
     connect(this,&TVideoWdg::mouseReleased,painter_,&TSurfacePainter::handleMouseReleased);
 
     // Scene
-    this->setScene(scene_);
-    scene_->addItem(currentFrame_);
+    this->setScene(scene_.get());
+    scene_->addItem(currentFrame_.get());
     // FrameProviders
     usbDevs_ = new TVideoDeviceFrameProvider;
     fproviders_.append(usbDevs_);
@@ -30,8 +30,8 @@ TVideoWdg::TVideoWdg(QWidget *parent) :
     usbDevs_->start(usbDevsReady);
 
     // Frame update
-    updateFrame_ = new QTimer;
-    connect(updateFrame_,&QTimer::timeout,[this]{
+    updateFrame_.reset(new QTimer);
+    connect(updateFrame_.get(),&QTimer::timeout,[this]{
         updateFrame();
     });
     updateFrame_->start(FRAME_UPDATE_PERIOD);
@@ -40,7 +40,9 @@ TVideoWdg::TVideoWdg(QWidget *parent) :
 TVideoWdg::~TVideoWdg()
 {
     delete painter_;
-    delete scene_;
+    for (auto prov : fproviders_) {
+        delete prov;
+    }
 }
 
 TSurfacePainter *TVideoWdg::getPainter()
@@ -91,7 +93,7 @@ void TVideoWdg::incZoom()
     }
     resetTransform();
     scale(zoomFactor_, zoomFactor_);
-    fitInView(currentFrame_, Qt::KeepAspectRatio);
+    fitInView(currentFrame_.get(), Qt::KeepAspectRatio);
     scene_->update();
 }
 
@@ -103,7 +105,7 @@ void TVideoWdg::decZoom()
     }
     resetTransform();
     scale(zoomFactor_, zoomFactor_);
-    fitInView(currentFrame_, Qt::KeepAspectRatio);
+    fitInView(currentFrame_.get(), Qt::KeepAspectRatio);
     scene_->update();
 }
 
@@ -112,7 +114,7 @@ void TVideoWdg::fit()
     scene_->setSceneRect(0, 0, currentFrameImg_.width(), currentFrameImg_.height());
     zoomFactor_ = 1.0;
     resetTransform();
-    fitInView(currentFrame_, Qt::KeepAspectRatio);
+    fitInView(currentFrame_.get(), Qt::KeepAspectRatio);
 }
 
 void TVideoWdg::useEdgeDetector(bool use)

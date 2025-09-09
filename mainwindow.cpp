@@ -22,34 +22,29 @@ MainWindow::MainWindow(QWidget *parent)
         }
     });
 
-    // Connect video source selection
     connect(ui->cb_videoSources, &QComboBox::currentTextChanged, ui->vidWgt, &TVideoWdg::changeVideoSrc);
 
-    // Connect RTSP URL changes
     connect(ui->pB_addRTCPurl, &QPushButton::clicked,[this]() {
         ui->vidWgt->addRTCPsource(ui->lE_videoSourceUrl->text());
     });
 
-    // Connect format selection
     connect(ui->cb_formats, &QComboBox::currentIndexChanged, ui->vidWgt, &TVideoWdg::changeVideofmt);
 
-    // Отрисовка граф.элементов / painter
     connect(ui->dsB_mmInPixelsHeight,&QDoubleSpinBox::valueChanged,ui->vidWgt->getPainter(),&TSurfacePainter::setmmInPixelsHeight);
     connect(ui->dsB_mmInPixelsWidth,&QDoubleSpinBox::valueChanged,ui->vidWgt->getPainter(),&TSurfacePainter::setmmInPixelsWidth);
 
-    //Обнаружение границ / Edge Detector
     connect(ui->cB_edgeDetection,&QCheckBox::clicked,ui->vidWgt,&TVideoWdg::useEdgeDetector);
 }
 
 void MainWindow::initializeToolBar()
 {
-    QToolBar *toolBar = this->addToolBar("Панель инструментов");
+    QToolBar *toolBar = this->addToolBar("Tool bar");
     QActionGroup *toolBarActGrp = new QActionGroup(this);
     toolBarActGrp->setExclusive(true);
 
     QAction *actionDrawLine = toolBar->addAction(
         QIcon(":/assets/icons/icons8-line-50.png"),
-        "Нарисовать линию"
+        "Draw Line"
         );
     actionDrawLine->setCheckable(true);
     actionDrawLine->setActionGroup(toolBarActGrp);
@@ -61,7 +56,7 @@ void MainWindow::initializeToolBar()
 
     QAction *actionDrawCircle = toolBar->addAction(
         QIcon(":/assets/icons/icons8-circle-50.png"),
-        "Нарисовать круг"
+        "Draw Circle"
         );
     actionDrawCircle->setCheckable(true);
     actionDrawCircle->setActionGroup(toolBarActGrp);
@@ -73,7 +68,7 @@ void MainWindow::initializeToolBar()
 
     QAction *actionClearScene = toolBar->addAction(
         QIcon(":/assets/icons/eraser.png"),
-        "Очистить сцену"
+        "Clear Scene"
         );
     connect(actionClearScene, &QAction::triggered, this, [this](bool state) {
         ui->vidWgt->getPainter()->clearScene();
@@ -81,19 +76,19 @@ void MainWindow::initializeToolBar()
 
     QAction *actionZoomPlus = toolBar->addAction(
         QIcon(":/assets/icons/zoom-in.png"),
-        "Увеличить"
+        "Zoom in"
         );
     connect(actionZoomPlus, &QAction::triggered, ui->vidWgt, &TVideoWdg::incZoom);
 
     QAction *actionZoomMinus = toolBar->addAction(
         QIcon(":/assets/icons/zoom-out.png"),
-        "Уменьшить"
+        "Zoom out"
         );
     connect(actionZoomMinus, &QAction::triggered, ui->vidWgt, &TVideoWdg::decZoom);
 
     QAction *actionFit = toolBar->addAction(
         QIcon(":/assets/icons/fit.png"),
-        "Вписать"
+        "Fit"
         );
     connect(actionFit, &QAction::triggered, ui->vidWgt, &TVideoWdg::fit);
 }

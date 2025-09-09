@@ -11,9 +11,6 @@ TVideoDeviceFrameProvider::~TVideoDeviceFrameProvider()
     if (camera_) {
         camera_->stop();
     }
-    delete camera_;
-    delete captureSession_;
-    delete videoSink_;
 }
 
 QList<std::string> TVideoDeviceFrameProvider::getDeviceDesc()
@@ -36,8 +33,8 @@ void TVideoDeviceFrameProvider::setDeviceByDesc(std::string desc)
             if (!formats_.isEmpty()) {
                 camera_->setCameraFormat(formats_.first());
             }
-            captureSession_->setCamera(camera_);
-            captureSession_->setVideoSink(videoSink_);
+            captureSession_->setCamera(camera_.get());
+            captureSession_->setVideoSink(videoSink_.get());
             camera_->start();
             break;
         }
@@ -73,17 +70,17 @@ void TVideoDeviceFrameProvider::run()
     qDebug() << "run thread:" << QThread::currentThread();
     cameras_ = mediaDevices_.videoInputs();
     if (!cameras_.isEmpty()) {
-        camera_ = new QCamera(cameras_.first(), this);
-        captureSession_ = new QMediaCaptureSession(this);
-        captureSession_->setCamera(camera_);
-        captureSession_->setVideoSink(videoSink_);
+        camera_.reset(new QCamera(cameras_.first(), this));
+        captureSession_.reset(new QMediaCaptureSession(this));
+        captureSession_->setCamera(camera_.get());
+        captureSession_->setVideoSink(videoSink_.get());
 
         formats_ = cameras_.first().videoFormats();
         if (!formats_.isEmpty()) {
             camera_->setCameraFormat(formats_.first());
         }
 
-        bool connected = connect(videoSink_, &QVideoSink::videoFrameChanged,
+        bool connected = connect(videoSink_.get(), &QVideoSink::videoFrameChanged,
                                  this, &TVideoDeviceFrameProvider::updateFrame,
                                  Qt::QueuedConnection);
         qDebug() << "Connection established:" << connected;
